@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web PhotoBooth - Gratis</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📸 WebBooth</div>
+        <h1>PhotoBooth Digital</h1>
+        <p>Ambil foto tanpa install aplikasi!</p>
+        
+        <div class="template-selection">
+            <h3>Pilih Template:</h3>
+            <div class="templates">
+                <div class="template-card" data-template="classic">
+                    <img src="templates/thumb-classic.png" alt="Classic">
+                    <span>Classic Strip</span>
+                </div>
+                <div class="template-card" data-template="square">
+                    <img src="templates/thumb-square.png" alt="Square">
+                    <span>Square Grid</span>
+                </div>
+                <div class="template-card" data-template="polaroid">
+                    <img src="templates/thumb-polaroid.png" alt="Polaroid">
+                    <span>Polaroid Style</span>
+                </div>
+            </div>
+        </div>
+        
+        <button id="start-btn" class="btn-primary" disabled>
+            Mulai Foto 📷
+        </button>
+        
+        <div class="features">
+            <div class="feature">✅ Gratis</div>
+            <div class="feature">✅ Tanpa Install</div>
+            <div class="feature">✅ Langsung Download</div>
+        </div>
+    </div>
+
+    <script>
+        // Template selection
+        let selectedTemplate = null;
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedTemplate = card.dataset.template;
+                localStorage.setItem('selectedTemplate', selectedTemplate);
+                document.getElementById('start-btn').disabled = false;
+            });
+        });
+        
+        document.getElementById('start-btn').addEventListener('click', () => {
+            window.location.href = 'camera.html';
+        });
+    </script>
+</body>
+</html>
