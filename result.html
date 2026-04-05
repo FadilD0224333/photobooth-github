@@ -1,1 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasil Foto - WebBooth</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="result-container">
+        <h2>🎉 Hasil Foto Anda!</h2>
+        
+        <!-- Canvas untuk hasil komposisi -->
+        <div class="canvas-wrapper">
+            <canvas id="result-canvas"></canvas>
+        </div>
+        
+        <!-- QR Code -->
+        <div class="qr-section">
+            <p>Scan untuk download:</p>
+            <div id="qrcode"></div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="actions">
+            <button id="download-btn" class="btn-primary">💾 Download</button>
+            <button id="retake-btn" class="btn-secondary">🔄 Foto Ulang</button>
+            <button id="share-wa" class="btn-whatsapp">📱 Share WA</button>
+        </div>
+    </div>
 
+    <script>
+        class ResultComposer {
+            constructor() {
+                this.canvas = new fabric.Canvas('result-canvas', {
+                    width: 600,
+                    height: 1800,
+                    backgroundColor: '#ffffff'
+                });
+                
+                this.photos = JSON.parse(localStorage.getItem('capturedPhotos') || '[]');
+                this.template = localStorage.getItem('selectedTemplate') || 'classic';
+                
+                this.init();
+            }
+            
+            async init() {
+                await this.composePhotoStrip();
+                this.generateQR();
+                this.setupButtons();
+            }
+            
+            async composePhotoStrip() {
+                const layout = this.getLayoutConfig();
+                
+                // Background/frame
+                if (layout.frame) {
+                    fabric.Image.fromURL(layout.frame, (img) => {
+                        img.scaleToWidth(this.canvas.width);
+                        this.canvas.setBackgroundImage(img, this.canvas.renderAll.bind(this.canvas));
+                    });
+                }
+                
+                // Tambah foto
+                const slotHeight = (this.canvas.height - 200) / this.photos.length;
+                
+                for (let i = 0; i < this.photos.length; i++) {
+                    fabric.Image.fromURL(this.photos[i], (img) => {
+                        const scale = Math.min(
+                            (this.canvas.width - 40) / img.width,
+                            (slotHeight - 20) / img.height
+                        );
+                        
+                        img.set({
+                            left: 20,
+                            top: 100 + (i * slotHeight),
+                            scaleX: scale,
+                            scaleY: scale,
+                            selectable: false
+                        });
+                        
+                        this.canvas.add(img);
+                    });
+                }
+                
+                // Tambah teks event
+                const text = new fabric.Textbox('WebBooth Event 2024', {
+                    left: this.canvas.width / 2,
+                    top: 50,
+                    fontSize: 30,
+                    fill: '#333',
+                    textAlign: 'center',
+                    originX: 'center',
+                    fontFamily: 'Arial'
+                });
+                this.canvas.add(text);
+                
+                // Footer text
+                const footer = new fabric.Textbox('Terima kasih!', {
+                    left: this.canvas.width / 2,
+                    top: this.canvas.height - 80,
+                    fontSize: 24,
+                    fill: '#666',
+                    textAlign: 'center',
+                    originX: 'center'
+                });
+                this.canvas.add(footer);
+            }
+            
+            getLayoutConfig() {
+                const configs = {
+                    classic: { frame: 'templates/frame-classic.png', slots: 4 },
+                    square: { frame: null, slots: 4, bg: '#f0f0f0' },
+                    polaroid: { frame: 'templates/frame-polaroid.png', slots: 4 }
+                };
+                return configs[this.template] || configs.classic;
+            }
+            
+            generateQR() {
+                const dataUrl = this.canvas.toDataURL('image/jpeg', 0.9);
+                
+                // Simpan ke localStorage untuk "download"
+                const downloads = JSON.parse(localStorage.getItem('downloads') || '[]');
+                const downloadId = Date.now();
+                downloads.push({ id: downloadId, data: dataUrl });
+                localStorage.setItem('downloads', JSON.stringify(downloads));
+                
+                // Generate QR
+                const downloadUrl = `${window.location.origin}/download.html?id=${downloadId}`;
+                new QRCode(document.getElementById('qrcode'), {
+                    text: downloadUrl,
+                    width: 150,
+                    height: 150
+                });
+                
+                this.finalImage = dataUrl;
+            }
+            
+            setupButtons() {
+                // Download
+                document.getElementById('download-btn').addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    link.download = `photobooth-${Date.now()}.jpg`;
+                    link.href = this.finalImage;
+                    link.click();
+                });
+                
+                // Retake
+                document.getElementById('retake-btn').addEventListener('click', () => {
+                    localStorage.removeItem('capturedPhotos');
+                    window.location.href = 'index.html';
+                });
+                
+                // Share WA
+                document.getElementById('share-wa').addEventListener('click', () => {
+                    // Convert base64 ke blob untuk share (limited)
+                    const text = `Lihat foto PhotoBooth saya! ${window.location.href}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+                });
+            }
+        }
+        
+        new ResultComposer();
+    </script>
+</body>
+</html>
