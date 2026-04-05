@@ -1,1 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Kamera - WebBooth</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Fabric.js untuk komposisi gambar -->
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+</head>
+<body class="camera-page">
+    <div class="camera-container">
+        <!-- Video Stream -->
+        <video id="camera-video" autoplay playsinline></video>
+        
+        <!-- Flash Effect -->
+        <div id="flash-overlay"></div>
+        
+        <!-- Countdown Display -->
+        <div id="countdown" class="hidden">3</div>
+        
+        <!-- Photo Counter -->
+        <div class="photo-counter">
+            Foto <span id="current-count">0</span>/4
+        </div>
+        
+        <!-- Controls -->
+        <div class="camera-controls">
+            <button id="capture-btn" class="btn-shutter">
+                <div class="shutter-inner"></div>
+            </button>
+        </div>
+        
+        <!-- Preview Strip (Bottom) -->
+        <div class="preview-strip" id="preview-strip"></div>
+    </div>
 
+    <!-- Hidden Canvas for Processing -->
+    <canvas id="process-canvas" style="display:none;"></canvas>
+
+    <script>
+        class PhotoBooth {
+            constructor() {
+                this.video = document.getElementById('camera-video');
+                this.canvas = document.getElementById('process-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.photos = [];
+                this.maxPhotos = 4;
+                this.stream = null;
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    // Akses kamera
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    
+                    this.video.srcObject = this.stream;
+                    
+                    // Setup capture button
+                    document.getElementById('capture-btn').addEventListener('click', () => {
+                        this.startCaptureSequence();
+                    });
+                    
+                } catch (err) {
+                    alert('Tidak bisa akses kamera. Pastikan:\n1. Gunakan HTTPS\n2. Beri izin kamera\n3. Coba browser Chrome/Edge');
+                    console.error(err);
+                }
+            }
+            
+            async startCaptureSequence() {
+                const btn = document.getElementById('capture-btn');
+                btn.disabled = true;
+                
+                // Capture 4 foto dengan countdown
+                for (let i = 0; i < this.maxPhotos; i++) {
+                    await this.countdownAndCapture();
+                    document.getElementById('current-count').textContent = i + 1;
+                    
+                    // Jeda antar foto
+                    if (i < this.maxPhotos - 1) {
+                        await this.sleep(1000);
+                    }
+                }
+                
+                // Simpan dan lanjut ke hasil
+                localStorage.setItem('capturedPhotos', JSON.stringify(this.photos));
+                window.location.href = 'result.html';
+            }
+            
+            async countdownAndCapture() {
+                const countdownEl = document.getElementById('countdown');
+                
+                for (let i = 3; i > 0; i--) {
+                    countdownEl.textContent = i;
+                    countdownEl.classList.remove('hidden');
+                    await this.sleep(1000);
+                }
+                
+                countdownEl.classList.add('hidden');
+                this.capturePhoto();
+            }
+            
+            capturePhoto() {
+                // Flash effect
+                const flash = document.getElementById('flash-overlay');
+                flash.style.opacity = '1';
+                setTimeout(() => flash.style.opacity = '0', 100);
+                
+                // Capture ke canvas
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+                this.ctx.drawImage(this.video, 0, 0);
+                
+                // Simpan sebagai base64
+                const photoData = this.canvas.toDataURL('image/jpeg', 0.9);
+                this.photos.push(photoData);
+                
+                // Update preview strip
+                this.updatePreviewStrip(photoData);
+            }
+            
+            updatePreviewStrip(photoData) {
+                const strip = document.getElementById('preview-strip');
+                const img = document.createElement('img');
+                img.src = photoData;
+                strip.appendChild(img);
+            }
+            
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Start
+        new PhotoBooth();
+    </script>
+</body>
+</html>
